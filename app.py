@@ -62,38 +62,30 @@ def main_page():
         icon=":material/dashboard:",
         default=(role == "admin"),
     )
-
     extracao = st.Page(
         "views/extracao.py",
-        title="Extração de Texto",
+        title="Gerar Questões",
         icon=":material/convert_to_text:",
     )
-
     settings = st.Page(
         "services/settings.py", 
         title="Configurações", 
-        icon=":material/settings:")
-    
+        icon=":material/settings:")   
     logout_page = st.Page(
         logout_user, 
         title="Sair", 
         icon=":material/logout:")
-
     user_pages = [dashboard, extracao]
     #admin_pages = [admin]
     account_pages = [settings, logout_page]
-
     st.logo("images/logo_palavra.png")
-
     page_dict = {}
     if st.session_state.role in ["integ", "admin"]:
         page_dict["Menu"] = user_pages
-
     if len(page_dict) > 0:
         pg = st.navigation(page_dict | {"Conta": account_pages})
     else:
         pg = st.navigation([st.Page(login_page)])
-
     pg.run()
 
 # Fluxo principal da aplicação
