@@ -80,7 +80,7 @@ if uploaded_file is not None:
                 # Atualizar progresso
                 progresso = (i + 1) / len(json_data_selecionado)
                 progress_bar.progress(progresso)
-                progress_container.text(f"Processando item {i+1} de {len(json_data_selecionado)} - {item.get('matéria', 'N/A')} - {item.get('assunto', 'N/A')}")               
+                progress_container.text(f"Processando item {i+1} de {len(json_data_selecionado)} - {item.get('materia', 'N/A')} - {item.get('assunto', 'N/A')}")               
                 # Gerar questão para este item
                 try:
                     questao = gerar_lista_questoes([item])[0]
@@ -104,7 +104,7 @@ if uploaded_file is not None:
                     # Mostrar metadados
                     st.markdown("**Metadados:**")
                     meta = questao.get('metadados', {})
-                    st.markdown(f"**Código:** {meta.get('codigo', 'N/A')} | **Matéria:** {meta.get('materia', 'N/A')} | **Tema:** {meta.get('tema', 'N/A')} | **Subtema:** {meta.get('subtema', 'N/A')} | **Assunto:** {meta.get('assunto', 'N/A')} | **Código:** {meta.get('codigo', 'N/A')}")                    
+                    st.markdown(f"**Código:** {meta.get('codigo', 'N/A')} | **Matéria:** {meta.get('materia', 'N/A')} | **Tema:** {meta.get('tema', 'N/A')} | **Subtema:** {meta.get('subtema', 'N/A')} | **Assunto:** {meta.get('assunto', 'N/A')}")                    
                     # Adiciona uma linha de separação entre as questões
                     st.markdown("---")               
                     # Pequena pausa para não sobrecarregar a API
