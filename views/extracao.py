@@ -3,8 +3,69 @@ import pandas as pd
 import time
 from services.openai_client import gerar_lista_questoes
 
+# Inicializa o estado da sessão para contar questões aprovadas
+if 'questoes_geradas' not in st.session_state:
+    st.session_state.questoes_geradas = []  
+# Indica se a geração de questões já foi realizada
+if 'geracao_realizada' not in st.session_state:
+    st.session_state.geracao_realizada = False   
+# Armazena o número de questões selecionado
+if 'num_questoes' not in st.session_state:
+    st.session_state.num_questoes = 3   
+# Armazena os dados do arquivo em formato JSON
+if 'json_data' not in st.session_state:
+    st.session_state.json_data = None
+
+# Função para atualizar o status de aprovação de uma questão
+def aprovar_questao(indice):
+    if 0 <= indice < len(st.session_state.questoes_geradas):
+        st.session_state.questoes_geradas[indice]['aprovado'] = True 
+
+# Função para cancelar aprovação
+def cancelar_aprovacao(indice):
+    if 0 <= indice < len(st.session_state.questoes_geradas):
+        st.session_state.questoes_geradas[indice]['aprovado'] = False 
+
+# Função para contar questões aprovadas
+def contar_questoes_aprovadas():
+    return sum(1 for q in st.session_state.questoes_geradas if q.get('aprovado', False))
+ 
+# Função para gerar questões
+def gerar_questoes():
+    # Marcar que a geração foi realizada
+    st.session_state.geracao_realizada = True   
+    # Limitar o número de questões ao selecionado pelo usuário
+    json_data_selecionado = st.session_state.json_data[:st.session_state.num_questoes]   
+    # Limpar questões anteriores
+    st.session_state.questoes_geradas = []    
+    # Criar um container para mostrar o progresso
+    progress_container = st.empty()
+    progress_bar = st.progress(0)   
+    # Gerar as questões
+    for i, item in enumerate(json_data_selecionado):
+        # Atualizar progresso
+        progresso = (i + 1) / len(json_data_selecionado)
+        progress_bar.progress(progresso)
+        progress_container.text(f"Processando item {i+1} de {len(json_data_selecionado)} - {item.get('matéria', 'N/A')} - {item.get('assunto', 'N/A')}")        
+        try:
+            questao = gerar_questoes_para_lista([item])[0]
+            st.session_state.questoes_geradas.append(questao)
+            # Pequena pausa para não sobrecarregar a API
+            time.sleep(0.5)
+        except Exception as e:
+            st.error(f"Erro ao gerar questão para o item {i+1}: {str(e)}")   
+    # Limpar indicadores de progresso
+    progress_container.empty()
+    progress_bar.empty()            
+    # Retornar o número de questões geradas
+    return len(st.session_state.questoes_geradas)
+
 st.title('Geração de Questões')
 st.write("Faça o upload de um arquivo Excel (.xlsx) ou CSV (.csv)")
+
+# Armazena o número de questões selecionado
+if 'num_questoes' not in st.session_state:
+    st.session_state.num_questoes = 3
 
 # File upload component
 uploaded_file = st.file_uploader("Escolha um arquivo", type=["xlsx", "csv"])
@@ -52,7 +113,7 @@ def process_file(file):
     
 # Display content based on uploaded file
 if uploaded_file is not None:
-    st.write("Arquivo carregado com sucesso!")   
+    st.write("Arquivo carregado com sucesso!") 
     # Add button to process file
     with st.spinner("Processando Arquivo..."):
         json_data = process_file(uploaded_file)
