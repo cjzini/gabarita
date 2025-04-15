@@ -78,7 +78,7 @@ def main_page():
     user_pages = [dashboard, extracao]
     #admin_pages = [admin]
     account_pages = [settings, logout_page]
-    st.logo("images/logo_palavra.png")
+    st.logo("images/logo_gabarita.png")
     page_dict = {}
     if st.session_state.role in ["integ", "admin"]:
         page_dict["Menu"] = user_pages

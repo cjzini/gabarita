@@ -49,9 +49,11 @@ def gerar_questao(item_json):
         
         3. Alertas e avisos
         Certifique-se de que a resposta apontada da questão esteja correta. Se necessário faça várias checagens para que a resposta apontada seja a correta, isso é MUITO IMPORTANTE.
-        A resposta deverá ser elaborada de maneira clara e interessante, de maneira que o aluno possa entender e aprender o conteúdo da questão.
+        O formato da exibição da alternativa deverá ser no seguinte formato: A) Descrição da alternativa 1
         O gabarito deverá ser apresentado em qual letra é a correta (A, B, C, D ou E) seguido da alternativa na forma literal, ou seja, repetindo a descrição da alternativa correta.
-
+        Um exemplo do formato do gabarito: D) Descrição da alternativa 4
+        A resolução deverá ser elaborada de maneira clara e interessante, de maneira que o aluno possa entender e aprender o conteúdo da questão.
+        
         4. Contexto
         Elabore a questão e suas alternativas cuidadosamente, de maneira original e interessante para despertar a curiosidade e engajar o aluno a pensar para responder.       
         """     

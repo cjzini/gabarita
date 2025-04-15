@@ -2,6 +2,8 @@ import streamlit as st
 import pandas as pd
 import time
 import json
+import csv
+import io
 from services.openai_client import gerar_lista_questoes
 
 # Inicializa o estado da sessão para contar questões aprovadas
@@ -30,6 +32,70 @@ def cancelar_aprovacao(indice):
 # Função para contar questões aprovadas
 def contar_questoes_aprovadas():
     return sum(1 for q in st.session_state.questoes_geradas if q.get('aprovado', False))
+
+# Função para converter questões para formato CSV
+def converter_questoes_para_csv(questoes):
+    """
+    Converte questões do formato JSON para CSV com as colunas especificadas. 
+    Args:
+        questoes (list): Lista de questões no formato JSON
+    Returns:
+        str: String contendo dados CSV
+    """
+    # Criar um buffer de string para armazenar o CSV
+    output = io.StringIO()
+    # Definir as colunas do CSV
+    fieldnames = [
+        'codigo', 'materia', 'tema', 'subtema', 'assunto', 
+        'enunciado', 'alternativa1', 'alternativa2', 'alternativa3', 
+        'alternativa4', 'alternativa5', 'gabarito', 'resolucao'
+    ]
+    # Criar o escritor CSV
+    writer = csv.DictWriter(output, fieldnames=fieldnames)  
+    # Escrever o cabeçalho
+    writer.writeheader()
+    # Para cada questão, extrair os dados e escrever no CSV
+    for questao in questoes:
+        # Extrair alternativas (remover a letra do início, ex: "A) Alternativa 1" -> "Alternativa 1")
+        alternativa1 = questao.get('alternativa1', '')
+        if len(alternativa1) > 3 and alternativa1[0].isalpha() and alternativa1[1:3] == ") ":
+            alternativa1 = alternativa1[3:]
+        alternativa2 = questao.get('alternativa2', '')
+        if len(alternativa2) > 3 and alternativa2[0].isalpha() and alternativa2[1:3] == ") ":
+            alternativa2 = alternativa2[3:]
+        alternativa3 = questao.get('alternativa3', '')
+        if len(alternativa3) > 3 and alternativa3[0].isalpha() and alternativa3[1:3] == ") ":
+            alternativa3 = alternativa3[3:]
+        alternativa4 = questao.get('alternativa4', '')
+        if len(alternativa4) > 3 and alternativa4[0].isalpha() and alternativa4[1:3] == ") ":
+            alternativa4 = alternativa4[3:]
+        alternativa5 = questao.get('alternativa5', '')
+        if len(alternativa5) > 3 and alternativa5[0].isalpha() and alternativa5[1:3] == ") ":
+            alternativa5 = alternativa5[3:]       
+        # Obter metadados
+        metadados = questao.get('metadados', {})
+        # Preparar a linha do CSV
+        linha = {
+            'codigo': metadados.get('codigo', ''),
+            'materia': metadados.get('materia', ''),
+            'tema': metadados.get('tema', ''),
+            'subtema': metadados.get('subtema', ''),
+            'assunto': metadados.get('assunto', ''),
+            'enunciado': questao.get('enunciado', ''),
+            'alternativa1': alternativa1,
+            'alternativa2': alternativa2,
+            'alternativa3': alternativa3,
+            'alternativa4': alternativa4,
+            'alternativa5': alternativa5,
+            'gabarito': questao.get('gabarito', ''),
+            'resolucao': questao.get('resolucao', '')
+        }
+        # Escrever a linha no CSV
+        writer.writerow(linha)
+    # Obter o conteúdo do CSV como string
+    csv_string = output.getvalue()
+    output.close()
+    return csv_string
  
 # Função para gerar questões
 def gerar_questoes():
@@ -165,11 +231,11 @@ if st.session_state.get('geracao_realizada', False) and st.session_state.questoe
                     st.info("Pendente")        
             st.markdown(f"**Questão:** {questao.get('enunciado', 'N/A')}")           
             # Mostrar alternativas
-            st.markdown(f"A) {questao.get('alternativa1', 'N/A')}")
-            st.markdown(f"B) {questao.get('alternativa2', 'N/A')}")
-            st.markdown(f"C) {questao.get('alternativa3', 'N/A')}")
-            st.markdown(f"D) {questao.get('alternativa4', 'N/A')}")
-            st.markdown(f"E) {questao.get('alternativa5', 'N/A')}")
+            st.markdown(f"{questao.get('alternativa1', 'N/A')}")
+            st.markdown(f"{questao.get('alternativa2', 'N/A')}")
+            st.markdown(f"{questao.get('alternativa3', 'N/A')}")
+            st.markdown(f"{questao.get('alternativa4', 'N/A')}")
+            st.markdown(f"{questao.get('alternativa5', 'N/A')}")
             # Mostrar resposta correta em destaque
             st.success(f"**Resposta correta:** {questao.get('gabarito', 'N/A')}")          
             # Mostrar explicação 
@@ -207,29 +273,44 @@ if st.session_state.get('geracao_realizada', False) and st.session_state.questoe
         percentual = (questoes_aprovadas / total_questoes) * 100 if total_questoes > 0 else 0
         st.info(f"Status de aprovação: {questoes_aprovadas} de {total_questoes} questões aprovadas ({percentual:.1f}%).")  
         # Botões para download em duas colunas
-        dl_col1, dl_col2 = st.columns(2)
+        dl_col1, dl_col2, dl_col3 = st.columns(3)
         # Botão para baixar todas as questões
         with dl_col1:
-            questoes_json = json.dumps(st.session_state.questoes_geradas, indent=2, ensure_ascii=False)
+            # Gerar dados em CSV para todas as questões
+            csv_data = converter_questoes_para_csv(st.session_state.questoes_geradas)
             st.download_button(
-                label="Baixar todas as questões",
-                data=questoes_json,
-                file_name="questoes_geradas.json",
-                mime="application/json"
+                label="Baixar todas as questões (CSV)",
+                data=csv_data,
+                file_name="questoes_geradas.csv",
+                mime="text/csv"
             )    
         # Botão para baixar apenas questões aprovadas
         with dl_col2:
             # Filtrar apenas questões aprovadas
             questoes_aprovadas_lista = [q for q in st.session_state.questoes_geradas if q.get('aprovado', False)]         
             if questoes_aprovadas_lista:
-                questoes_aprovadas_json = json.dumps(questoes_aprovadas_lista, indent=2, ensure_ascii=False)
+                # Gerar dados em CSV apenas para questões aprovadas
+                csv_aprovadas = converter_questoes_para_csv(questoes_aprovadas_lista)
                 st.download_button(
-                    label="Baixar apenas aprovadas",
-                    data=questoes_aprovadas_json,
-                    file_name="questoes_aprovadas.json",
-                    mime="application/json"
+                    label="Baixar apenas aprovadas (CSV)",
+                    data=csv_aprovadas,
+                    file_name="questoes_aprovadas.csv",
+                    mime="text/csv"
                 )
             else:
                 st.write("Nenhuma questão aprovada ainda")
-else:
-    st.info("Por favor, faça o upload de um arquivo Excel (.xlsx) ou CSV (.csv).")
+        # Botão para baixar apenas questões NÃO aprovadas em CSV
+        with dl_col3:
+            # Filtrar apenas questões NÃO aprovadas
+            questoes_nao_aprovadas_lista = [q for q in st.session_state.questoes_geradas if not q.get('aprovado', False)]      
+            if questoes_nao_aprovadas_lista:
+                # Gerar dados em CSV apenas para questões NÃO aprovadas
+                csv_nao_aprovadas = converter_questoes_para_csv(questoes_nao_aprovadas_lista)
+                st.download_button(
+                    label="Baixar não aprovadas (CSV)",
+                    data=csv_nao_aprovadas,
+                    file_name="questoes_nao_aprovadas.csv",
+                    mime="text/csv"
+                )
+            else:
+                st.write("Todas as questões já foram aprovadas")
