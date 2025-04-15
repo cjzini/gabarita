@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import time
-import json
 import csv
 import io
 from services.openai_client import gerar_lista_questoes
@@ -307,7 +306,7 @@ if st.session_state.get('geracao_realizada', False) and st.session_state.questoe
                 # Gerar dados em CSV apenas para questões NÃO aprovadas
                 csv_nao_aprovadas = converter_questoes_para_csv(questoes_nao_aprovadas_lista)
                 st.download_button(
-                    label="Baixar não aprovadas (CSV)",
+                    label="Baixar apenas não aprovadas (CSV)",
                     data=csv_nao_aprovadas,
                     file_name="questoes_nao_aprovadas.csv",
                     mime="text/csv"
