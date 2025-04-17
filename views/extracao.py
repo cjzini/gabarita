@@ -32,6 +32,33 @@ def cancelar_aprovacao(indice):
 def contar_questoes_aprovadas():
     return sum(1 for q in st.session_state.questoes_geradas if q.get('aprovado', False))
 
+# Função para editar questão
+def editar_questao(indice, dados_editados):
+    """
+    Atualiza uma questão com os dados editados.  
+    Args:
+        indice (int): Índice da questão a ser editada
+        dados_editados (dict): Dicionário com os novos dados da questão
+    """
+    if 'questoes_geradas' not in st.session_state or indice >= len(st.session_state.questoes_geradas):
+        return False  
+    # Atualizar os campos da questão com os dados editados
+    questao = st.session_state.questoes_geradas[indice]
+    questao['enunciado'] = dados_editados['enunciado']
+    questao['alternativa1'] = dados_editados['alternativa1']
+    questao['alternativa2'] = dados_editados['alternativa2']
+    questao['alternativa3'] = dados_editados['alternativa3']
+    questao['alternativa4'] = dados_editados['alternativa4']
+    questao['alternativa5'] = dados_editados['alternativa5']
+    questao['gabarito'] = dados_editados['gabarito']
+    questao['resolucao'] = dados_editados['resolucao']
+    # Atualizar metadados se necessário
+    if 'metadados' in dados_editados:
+        questao['metadados'] = dados_editados['metadados']
+    # Salvar a questão atualizada de volta na lista
+    st.session_state.questoes_geradas[indice] = questao
+    return True
+
 # Função para converter questões para formato Excel completo (com todas as colunas)
 def converter_questoes_para_excel(questoes):
     """
@@ -341,22 +368,130 @@ if st.session_state.get('geracao_realizada', False) and st.session_state.questoe
             meta = questao.get('metadados', {})
             st.markdown(f"**Código:** {meta.get('codigo', 'N/A')} | **Matéria:** {meta.get('materia', 'N/A')} | **Tema:** {meta.get('tema', 'N/A')} | **Subtema:** {meta.get('subtema', 'N/A')} | **Assunto:** {meta.get('assunto', 'N/A')}")
             
-            # Adicionar botão de aprovação
-            btn_col1, btn_col2 = st.columns([3, 1])
-            with btn_col2:
-                # Se já estiver aprovada, mostrar botão para cancelar aprovação
-                if questao.get('aprovado', False):
-                    if st.button("Cancelar aprovação", key=f"btn_cancelar_{questao_key}"):
-                        # Chamar a função de callback
-                        cancelar_aprovacao(i)
-                        st.rerun()  # Recarregar apenas os componentes
-                else:
-                    # Se não estiver aprovada, mostrar botão de aprovar
-                    if st.button("Aprovar questão", key=f"btn_aprovar_{questao_key}"):
-                        # Chamar a função de callback
-                        aprovar_questao(i)
-                        st.rerun()  # Recarregar apenas os componentes
-            
+            # Estado de edição para esta questão
+            if f"edit_mode_{i}" not in st.session_state:
+                st.session_state[f"edit_mode_{i}"] = False
+            # Estado para armazenar os dados da questão durante a edição
+            if f"edit_data_{i}" not in st.session_state:
+                st.session_state[f"edit_data_{i}"] = {
+                    'enunciado': questao.get('enunciado', ''),
+                    'alternativa1': questao.get('alternativa1', ''),
+                    'alternativa2': questao.get('alternativa2', ''),
+                    'alternativa3': questao.get('alternativa3', ''),
+                    'alternativa4': questao.get('alternativa4', ''),
+                    'alternativa5': questao.get('alternativa5', ''),
+                    'gabarito': questao.get('gabarito', ''),
+                    'resolucao': questao.get('resolucao', '')
+                }
+            # Modo de edição
+            if st.session_state[f"edit_mode_{i}"]:
+                # Formulário de edição
+                with st.form(key=f"edit_form_{i}"):
+                    st.subheader("Editar Questão")                 
+                    # Campo para editar o enunciado
+                    enunciado_editado = st.text_area(
+                        "Enunciado da questão",
+                        value=st.session_state[f"edit_data_{i}"]['enunciado'],
+                        key=f"edit_enunciado_{i}"
+                    )               
+                    # Campos para editar alternativas
+                    alternativa1_editada = st.text_input(
+                        "Alternativa A", 
+                        value=st.session_state[f"edit_data_{i}"]['alternativa1'],
+                        key=f"edit_alt1_{i}"
+                    )
+                    alternativa2_editada = st.text_input(
+                        "Alternativa B", 
+                        value=st.session_state[f"edit_data_{i}"]['alternativa2'],
+                        key=f"edit_alt2_{i}"
+                    )
+                    alternativa3_editada = st.text_input(
+                        "Alternativa C", 
+                        value=st.session_state[f"edit_data_{i}"]['alternativa3'],
+                        key=f"edit_alt3_{i}"
+                    )
+                    alternativa4_editada = st.text_input(
+                        "Alternativa D", 
+                        value=st.session_state[f"edit_data_{i}"]['alternativa4'],
+                        key=f"edit_alt4_{i}"
+                    )
+                    alternativa5_editada = st.text_input(
+                        "Alternativa E", 
+                        value=st.session_state[f"edit_data_{i}"]['alternativa5'],
+                        key=f"edit_alt5_{i}"
+                    )      
+                    # Campo para editar a resposta correta
+                    gabarito_editado = st.text_input(
+                        "Gabarito",
+                        value=st.session_state[f"edit_data_{i}"]['gabarito'],
+                        key=f"edit_gabarito_{i}"
+                    )
+                    # Campo para editar a explicação
+                    resolucao_editada = st.text_area(
+                        "Resolução",
+                        value=st.session_state[f"edit_data_{i}"]['resolucao'],
+                        key=f"edit_resolucao_{i}"
+                    )              
+                    # Botões de salvar e cancelar
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        submit_button = st.form_submit_button("Salvar alterações")
+                    with col2:
+                        cancel_button = st.form_submit_button("Cancelar")               
+                    if submit_button:
+                        # Atualizar os dados da questão com os valores editados
+                        dados_editados = {
+                            'enunciado': enunciado_editado,
+                            'alternativa1': alternativa1_editada,
+                            'alternativa2': alternativa2_editada,
+                            'alternativa3': alternativa3_editada,
+                            'alternativa4': alternativa4_editada,
+                            'alternativa5': alternativa5_editada,
+                            'gabarito': gabarito_editado,
+                            'resolucao': resolucao_editada
+                        }
+                        # Chamar a função para atualizar a questão
+                        editar_questao(i, dados_editados)
+                        # Sair do modo de edição
+                        st.session_state[f"edit_mode_{i}"] = False
+                        st.rerun()
+                    if cancel_button:
+                        # Sair do modo de edição sem salvar
+                        st.session_state[f"edit_mode_{i}"] = False
+                        st.rerun()           
+            else:
+                # Adicionar botões de ação (editar e aprovar/cancelar aprovação)
+                btn_col1, btn_col2 = st.columns([3, 1])
+                # Botão de edição
+                with btn_col1:
+                    if st.button("Editar questão", key=f"btn_editar_{questao_key}"):
+                        # Atualizar os dados de edição com os valores atuais da questão
+                        st.session_state[f"edit_data_{i}"] = {
+                            'enunciado': questao.get('enunciado', ''),
+                            'alternativa1': questao.get('alternativa1', ''),
+                            'alternativa2': questao.get('alternativa2', ''),
+                            'alternativa3': questao.get('alternativa3', ''),
+                            'alternativa4': questao.get('alternativa4', ''),
+                            'alternativa5': questao.get('alternativa5', ''),
+                            'gabarito': questao.get('gabarito', ''),
+                            'resolucao': questao.get('resolucao', '')
+                        }
+                        st.session_state[f"edit_mode_{i}"] = True
+                        st.rerun()          
+                # Botão de aprovação
+                with btn_col2:
+                    # Se já estiver aprovada, mostrar botão para cancelar aprovação
+                    if questao.get('aprovado', False):
+                        if st.button("Cancelar aprovação", key=f"btn_cancelar_{questao_key}"):
+                            # Chamar a função de callback
+                            cancelar_aprovacao(i)
+                            st.rerun()  # Recarregar apenas os componentes
+                    else:
+                        # Se não estiver aprovada, mostrar botão de aprovar
+                        if st.button("Aprovar questão", key=f"btn_aprovar_{questao_key}"):
+                            # Chamar a função de callback
+                            aprovar_questao(i)
+                            st.rerun()  # Recarregar apenas os componentes
             # Adiciona uma linha de separação entre as questões
             st.markdown("---")
     # Resumo e botões de download
