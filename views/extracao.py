@@ -32,6 +32,103 @@ def cancelar_aprovacao(indice):
 def contar_questoes_aprovadas():
     return sum(1 for q in st.session_state.questoes_geradas if q.get('aprovado', False))
 
+# Função para converter questões para formato Excel completo (com todas as colunas)
+def converter_questoes_para_excel(questoes):
+    """
+    Converte questões do formato JSON para Excel com as colunas completas.    
+    Args:
+        questoes (list): Lista de questões no formato JSON
+    Returns:
+        bytes: Arquivo Excel em formato bytes
+    """
+    # Criar listas para armazenar os dados
+    dados = []
+    # Para cada questão, extrair os dados
+    for questao in questoes:
+        # Extrair alternativas (remover a letra do início, ex: "A) Alternativa 1" -> "Alternativa 1")
+        alternativa1 = questao.get('alternativa1', '')
+        if len(alternativa1) > 3 and alternativa1[0].isalpha() and alternativa1[1:3] == ") ":
+            alternativa1 = alternativa1[3:]
+        alternativa2 = questao.get('alternativa2', '')
+        if len(alternativa2) > 3 and alternativa2[0].isalpha() and alternativa2[1:3] == ") ":
+            alternativa2 = alternativa2[3:]
+        alternativa3 = questao.get('alternativa3', '')
+        if len(alternativa3) > 3 and alternativa3[0].isalpha() and alternativa3[1:3] == ") ":
+            alternativa3 = alternativa3[3:]
+        alternativa4 = questao.get('alternativa4', '')
+        if len(alternativa4) > 3 and alternativa4[0].isalpha() and alternativa4[1:3] == ") ":
+            alternativa4 = alternativa4[3:]
+        alternativa5 = questao.get('alternativa5', '')
+        if len(alternativa5) > 3 and alternativa5[0].isalpha() and alternativa5[1:3] == ") ":
+            alternativa5 = alternativa5[3:] 
+        # Obter metadados
+        metadados = questao.get('metadados', {})
+        # Preparar a linha de dados
+        linha = {
+            'codigo': metadados.get('codigo', ''),
+            'materia': metadados.get('materia', ''),
+            'tema': metadados.get('tema', ''),
+            'subtema': metadados.get('subtema', ''),
+            'assunto': metadados.get('assunto', ''),
+            'enunciado': questao.get('enunciado', ''),
+            'alternativa1': alternativa1,
+            'alternativa2': alternativa2,
+            'alternativa3': alternativa3,
+            'alternativa4': alternativa4,
+            'alternativa5': alternativa5,
+            'gabarito': questao.get('gabarito', ''),
+            'resolucao': questao.get('resolucao', '')
+        }
+        dados.append(linha)
+    # Criar um DataFrame com os dados
+    df = pd.DataFrame(dados)
+    # Criar um buffer para armazenar o arquivo Excel
+    output = io.BytesIO()
+    # Escrever o DataFrame no arquivo Excel
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='Questões')
+    # Obter o conteúdo do Excel como bytes
+    excel_data = output.getvalue()
+    output.close()
+    return excel_data
+
+# Função para converter questões não aprovadas para Excel simplificado (apenas metadados)
+def converter_questoes_nao_aprovadas_para_excel(questoes):
+    """
+    Converte questões não aprovadas para Excel com apenas os campos de metadados.
+    Args:
+        questoes (list): Lista de questões não aprovadas no formato JSON
+    Returns:
+        bytes: Arquivo Excel em formato bytes
+    """
+    # Criar listas para armazenar os dados
+    dados = []
+    # Para cada questão, extrair apenas os metadados
+    for questao in questoes:
+        # Obter metadados
+        metadados = questao.get('metadados', {})
+        # Preparar a linha de dados
+        linha = {
+            'codigo': metadados.get('codigo', ''),
+            'materia': metadados.get('materia', ''),
+            'tema': metadados.get('tema', ''),
+            'subtema': metadados.get('subtema', ''),
+            'assunto': metadados.get('assunto', '')
+        }
+        
+        dados.append(linha)
+    # Criar um DataFrame com os dados
+    df = pd.DataFrame(dados)
+    # Criar um buffer para armazenar o arquivo Excel
+    output = io.BytesIO()
+    # Escrever o DataFrame no arquivo Excel
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='Questões não aprovadas')
+    # Obter o conteúdo do Excel como bytes
+    excel_data = output.getvalue()
+    output.close()    
+    return excel_data
+
 # Função para converter questões para formato CSV
 def converter_questoes_para_csv(questoes):
     """
@@ -276,25 +373,41 @@ if st.session_state.get('geracao_realizada', False) and st.session_state.questoe
         # Botão para baixar todas as questões
         with dl_col1:
             # Gerar dados em CSV para todas as questões
-            csv_data = converter_questoes_para_csv(st.session_state.questoes_geradas)
+            # csv_data = converter_questoes_para_csv(st.session_state.questoes_geradas)
+            # st.download_button(
+            #     label="Baixar todas as questões (CSV)",
+            #     data=csv_data,
+            #     file_name="questoes_geradas.csv",
+            #     mime="text/csv"
+            # )
+            # Gerar dados em Excel para todas as questões
+            excel_data = converter_questoes_para_excel(st.session_state.questoes_geradas)
             st.download_button(
-                label="Baixar todas as questões (CSV)",
-                data=csv_data,
-                file_name="questoes_geradas.csv",
-                mime="text/csv"
-            )    
+                label="Baixar todas as questões (Excel)",
+                data=excel_data,
+                file_name="questoes_geradas.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )   
         # Botão para baixar apenas questões aprovadas
         with dl_col2:
             # Filtrar apenas questões aprovadas
             questoes_aprovadas_lista = [q for q in st.session_state.questoes_geradas if q.get('aprovado', False)]         
             if questoes_aprovadas_lista:
                 # Gerar dados em CSV apenas para questões aprovadas
-                csv_aprovadas = converter_questoes_para_csv(questoes_aprovadas_lista)
+                # csv_aprovadas = converter_questoes_para_csv(questoes_aprovadas_lista)
+                # st.download_button(
+                #     label="Baixar apenas aprovadas (CSV)",
+                #     data=csv_aprovadas,
+                #     file_name="questoes_aprovadas.csv",
+                #     mime="text/csv"
+                # )
+                # Gerar dados em Excel apenas para questões aprovadas
+                excel_aprovadas = converter_questoes_para_excel(questoes_aprovadas_lista)
                 st.download_button(
-                    label="Baixar apenas aprovadas (CSV)",
-                    data=csv_aprovadas,
-                    file_name="questoes_aprovadas.csv",
-                    mime="text/csv"
+                    label="Baixar apenas aprovadas (Excel)",
+                    data=excel_aprovadas,
+                    file_name="questoes_aprovadas.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 )
             else:
                 st.write("Nenhuma questão aprovada ainda")
@@ -304,12 +417,20 @@ if st.session_state.get('geracao_realizada', False) and st.session_state.questoe
             questoes_nao_aprovadas_lista = [q for q in st.session_state.questoes_geradas if not q.get('aprovado', False)]      
             if questoes_nao_aprovadas_lista:
                 # Gerar dados em CSV apenas para questões NÃO aprovadas
-                csv_nao_aprovadas = converter_questoes_para_csv(questoes_nao_aprovadas_lista)
+                # csv_nao_aprovadas = converter_questoes_para_csv(questoes_nao_aprovadas_lista)
+                # st.download_button(
+                #     label="Baixar apenas não aprovadas (CSV)",
+                #     data=csv_nao_aprovadas,
+                #     file_name="questoes_nao_aprovadas.csv",
+                #     mime="text/csv"
+                # )
+                # Gerar dados em Excel apenas para metadados das questões NÃO aprovadas
+                excel_nao_aprovadas = converter_questoes_nao_aprovadas_para_excel(questoes_nao_aprovadas_lista)
                 st.download_button(
-                    label="Baixar apenas não aprovadas (CSV)",
-                    data=csv_nao_aprovadas,
-                    file_name="questoes_nao_aprovadas.csv",
-                    mime="text/csv"
+                    label="Baixar apenas não aprovadas (Excel)",
+                    data=excel_nao_aprovadas,
+                    file_name="questoes_nao_aprovadas.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 )
             else:
                 st.write("Todas as questões já foram aprovadas")
