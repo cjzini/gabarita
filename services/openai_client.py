@@ -5,11 +5,12 @@ import json
 openai_api_key = st.secrets["OPENAI_API_KEY"]
 client = OpenAI(api_key=openai_api_key)
 
-def gerar_questao(item_json):
+def gerar_questao(item_json, dificuldade):
     """
     Gera questões de múltipla escolha baseadas nos dados fornecidos.  
     Args:
         item_json (dict): Um dicionário contendo 'codigo', 'materia', 'tema', 'subtema' e 'assunto'
+        dificuldade (str): Nível de dificuldade da questão ('fácil', 'médio' ou 'difícil')
     Returns:
         dict: Questão gerada em formato JSON
     """
@@ -27,11 +28,14 @@ def gerar_questao(item_json):
         Vou apresentar a você: matéria, tema, subtema e assunto. 
         Com isso você deverá elaborar uma questão (enunciado) de múltipla escolha, com 5 alternativas possíveis. 
         Também deverá apresentar a alternativa correta (gabarito) e uma descrição da resolução da questão.
+        A questão poderá ter 3 níveis de dificuldade: fácil, médio e difícil. Abaixo vou apresentar qual o nível de dificuldade da questão.
 
         Matéria: {materia}
         Tema: {tema}
         Subtema: {subtema}
         Assunto: {assunto}
+
+        Nível de dificuldade: {dificuldade}
 
         2. Como deve ser a resposta
         A resposta deverá ser no seguinte formato JSON:
@@ -49,8 +53,8 @@ def gerar_questao(item_json):
         3. Alertas e avisos
         Certifique-se de que a resposta apontada da questão esteja correta. Se necessário faça várias checagens para que a resposta apontada seja a correta, isso é MUITO IMPORTANTE.
         O formato da exibição da alternativa deverá ser no seguinte formato: A) Descrição da alternativa 1
-        O gabarito deverá ser apresentado em qual letra é a correta (A, B, C, D ou E) seguido da alternativa na forma literal, ou seja, repetindo a descrição da alternativa correta.
-        Um exemplo do formato do gabarito: D) Descrição da alternativa 4
+        O gabarito deverá ser apresentado na alternativa na forma literal, ou seja, repetindo a descrição da alternativa correta.
+        Um exemplo do formato do gabarito: Descrição da alternativa 4
         A resolução deverá ser elaborada de maneira clara e interessante, de maneira que o aluno possa entender e aprender o conteúdo da questão.
         
         4. Contexto
@@ -71,7 +75,8 @@ def gerar_questao(item_json):
             "materia": materia,
             "tema": tema,
             "subtema": subtema,
-            "assunto": assunto    
+            "assunto": assunto,
+            "dificuldade": dificuldade    
         }  
         return resultado
     except Exception as e:
@@ -93,7 +98,7 @@ def gerar_questao(item_json):
             }
         }
 
-def gerar_lista_questoes(lista_json):
+def gerar_lista_questoes(lista_json, dificuldade):
     """
     Gera questões de múltipla escolha para uma lista de itens JSON.  
     Args:
@@ -103,6 +108,6 @@ def gerar_lista_questoes(lista_json):
     """
     resultados = []
     for item in lista_json:
-        questao = gerar_questao(item)
+        questao = gerar_questao(item, dificuldade)
         resultados.append(questao)      
     return resultados

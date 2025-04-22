@@ -13,7 +13,10 @@ if 'geracao_realizada' not in st.session_state:
     st.session_state.geracao_realizada = False   
 # Armazena o número de questões selecionado
 if 'num_questoes' not in st.session_state:
-    st.session_state.num_questoes = 3   
+    st.session_state.num_questoes = 3
+# Armazena o nível de dificuldade selecionado
+if 'dificuldade' not in st.session_state:
+    st.session_state.dificuldade = "médio"   
 # Armazena os dados do arquivo em formato JSON
 if 'json_data' not in st.session_state:
     st.session_state.json_data = None
@@ -87,7 +90,10 @@ def converter_questoes_para_excel(questoes):
             alternativa4 = alternativa4[3:]
         alternativa5 = questao.get('alternativa5', '')
         if len(alternativa5) > 3 and alternativa5[0].isalpha() and alternativa5[1:3] == ") ":
-            alternativa5 = alternativa5[3:] 
+            alternativa5 = alternativa5[3:]
+        gabarito = questao.get('gabarito', '')
+        if len(gabarito) > 3 and gabarito[0].isalpha() and gabarito[1:3] == ") ":
+            gabarito = gabarito[3:]
         # Obter metadados
         metadados = questao.get('metadados', {})
         # Preparar a linha de dados
@@ -97,13 +103,14 @@ def converter_questoes_para_excel(questoes):
             'tema': metadados.get('tema', ''),
             'subtema': metadados.get('subtema', ''),
             'assunto': metadados.get('assunto', ''),
+            'dificuldade': metadados.get('dificuldade', ''),
             'enunciado': questao.get('enunciado', ''),
             'alternativa1': alternativa1,
             'alternativa2': alternativa2,
             'alternativa3': alternativa3,
             'alternativa4': alternativa4,
             'alternativa5': alternativa5,
-            'gabarito': questao.get('gabarito', ''),
+            'gabarito': gabarito,
             'resolucao': questao.get('resolucao', '')
         }
         dados.append(linha)
@@ -194,7 +201,10 @@ def converter_questoes_para_csv(questoes):
             alternativa4 = alternativa4[3:]
         alternativa5 = questao.get('alternativa5', '')
         if len(alternativa5) > 3 and alternativa5[0].isalpha() and alternativa5[1:3] == ") ":
-            alternativa5 = alternativa5[3:]       
+            alternativa5 = alternativa5[3:]
+        gabarito = questao.get('gabarito', '')
+        if len(gabarito) > 3 and gabarito[0].isalpha() and gabarito[1:3] == ") ":
+            gabarito = gabarito[3:]       
         # Obter metadados
         metadados = questao.get('metadados', {})
         # Preparar a linha do CSV
@@ -204,13 +214,14 @@ def converter_questoes_para_csv(questoes):
             'tema': metadados.get('tema', ''),
             'subtema': metadados.get('subtema', ''),
             'assunto': metadados.get('assunto', ''),
+            'dificuldade': metadados.get('dificuldade', ''),
             'enunciado': questao.get('enunciado', ''),
             'alternativa1': alternativa1,
             'alternativa2': alternativa2,
             'alternativa3': alternativa3,
             'alternativa4': alternativa4,
             'alternativa5': alternativa5,
-            'gabarito': questao.get('gabarito', ''),
+            'gabarito': gabarito,
             'resolucao': questao.get('resolucao', '')
         }
         # Escrever a linha no CSV
@@ -236,9 +247,9 @@ def gerar_questoes():
         # Atualizar progresso
         progresso = (i + 1) / len(json_data_selecionado)
         progress_bar.progress(progresso)
-        progress_container.text(f"Processando item {i+1} de {len(json_data_selecionado)} - {item.get('materia', 'N/A')} - {item.get('assunto', 'N/A')}")        
+        progress_container.text(f"Processando item {i+1} de {len(json_data_selecionado)} - {item.get('materia', 'N/A')} - {item.get('assunto', 'N/A')}  - Dificuldade: {st.session_state.dificuldade}")        
         try:
-            questao = gerar_lista_questoes([item])[0]
+            questao = gerar_lista_questoes([item], st.session_state.dificuldade)[0]
             st.session_state.questoes_geradas.append(questao)
             # Pequena pausa para não sobrecarregar a API
             time.sleep(0.5)
@@ -323,6 +334,16 @@ if uploaded_file is not None:
             value=valor_padrao, 
             help="Quanto mais questões, mais tempo levará para gerar."
         )
+        # Seletor de nível de dificuldade usando radio buttons
+        st.write("Selecione o nível de dificuldade:")
+        st.session_state.dificuldade = st.radio(
+            "Nível de dificuldade",
+            options=["fácil", "médio", "difícil"],
+            index=1,  # médio como padrão
+            help="Escolha o nível de complexidade das questões geradas.",
+            horizontal=True,  # Mostra os botões horizontalmente
+            label_visibility="collapsed"  # Oculta o rótulo principal pois já temos um título acima
+        )
         # Botão para gerar questões
         if st.button("Gerar Questões", key="btn_gerar_questoes"):
             # Chamar a função para gerar questões (não precisa de spinner, já tem barra de progresso)
@@ -366,7 +387,7 @@ if st.session_state.get('geracao_realizada', False) and st.session_state.questoe
             # Mostrar metadados
             st.markdown("**Metadados:**")
             meta = questao.get('metadados', {})
-            st.markdown(f"**Código:** {meta.get('codigo', 'N/A')} | **Matéria:** {meta.get('materia', 'N/A')} | **Tema:** {meta.get('tema', 'N/A')} | **Subtema:** {meta.get('subtema', 'N/A')} | **Assunto:** {meta.get('assunto', 'N/A')}")
+            st.markdown(f"**Código:** {meta.get('codigo', 'N/A')} | **Matéria:** {meta.get('materia', 'N/A')} | **Tema:** {meta.get('tema', 'N/A')} | **Subtema:** {meta.get('subtema', 'N/A')} | **Assunto:** {meta.get('assunto', 'N/A')} | **Dificuldade:** {meta.get('dificuldade', 'N/A')}")
             
             # Estado de edição para esta questão
             if f"edit_mode_{i}" not in st.session_state:
