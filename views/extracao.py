@@ -123,7 +123,7 @@ def converter_questoes_para_excel(questoes):
     df = pd.DataFrame(dados)
     # Escapes the unicode characters if they exist
     #df = df.applymap(lambda x: x.encode('unicode_escape').decode('utf-8') if isinstance(x, str) else x)
-    df = df.apply(lambda col: col.map(lambda x: x.encode('unicode_escape').decode('utf-8') if isinstance(x, str) else x))
+    #df = df.apply(lambda col: col.map(lambda x: x.encode('unicode_escape').decode('utf-8') if isinstance(x, str) else x))
     # Criar um buffer para armazenar o arquivo Excel
     output = io.BytesIO()
     # Escrever o DataFrame no arquivo Excel
