@@ -29,7 +29,12 @@ def aprovar_questao(indice):
 # Função para cancelar aprovação
 def cancelar_aprovacao(indice):
     if 0 <= indice < len(st.session_state.questoes_geradas):
-        st.session_state.questoes_geradas[indice]['aprovado'] = False 
+        st.session_state.questoes_geradas[indice]['aprovado'] = False
+
+# Função para aprovar todas as questões de uma vez
+def aprovar_todas_questoes():
+    for i in range(len(st.session_state.questoes_geradas)):
+        st.session_state.questoes_geradas[i]['aprovado'] = True         
 
 # Função para contar questões aprovadas
 def contar_questoes_aprovadas():
@@ -116,6 +121,8 @@ def converter_questoes_para_excel(questoes):
         dados.append(linha)
     # Criar um DataFrame com os dados
     df = pd.DataFrame(dados)
+    # Escapes the unicode characters if they exist
+    df = df.applymap(lambda x: x.encode('unicode_escape').decode('utf-8') if isinstance(x, str) else x)
     # Criar um buffer para armazenar o arquivo Excel
     output = io.BytesIO()
     # Escrever o DataFrame no arquivo Excel
@@ -537,13 +544,23 @@ if st.session_state.get('geracao_realizada', False) and st.session_state.questoe
             #     mime="text/csv"
             # )
             # Gerar dados em Excel para todas as questões
-            excel_data = converter_questoes_para_excel(st.session_state.questoes_geradas)
-            st.download_button(
-                label="Baixar todas as questões (Excel)",
-                data=excel_data,
-                file_name="questoes_geradas.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )   
+            # excel_data = converter_questoes_para_excel(st.session_state.questoes_geradas)
+            # st.download_button(
+            #     label="Baixar todas as questões (Excel)",
+            #     data=excel_data,
+            #     file_name="questoes_geradas.xlsx",
+            #     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            # )
+            # Contar quantas questões não estão aprovadas
+            questoes_nao_aprovadas = total_questoes - questoes_aprovadas
+            if questoes_nao_aprovadas > 0:
+                if st.button(f"Aprovar todas as questões ({questoes_nao_aprovadas} pendentes)"):
+                    # Chamar a função para aprovar todas as questões
+                    aprovar_todas_questoes()
+                    st.success("Todas as questões foram aprovadas!")
+                    st.rerun()
+            else:
+                st.success("Todas as questões já estão aprovadas!")   
         # Botão para baixar apenas questões aprovadas
         with dl_col2:
             # Filtrar apenas questões aprovadas
