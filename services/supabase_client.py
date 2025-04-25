@@ -90,31 +90,38 @@ def salvar_questao(questao):
             metadados.get('assunto', '')
         )
         
-        # Processar alternativas (remover letras no início, se houver)
-        alternativas_processadas = []
-        for alt in questao.get('alternativas', []):
-            # Remover prefixos como "A)", "B)", etc. se existirem
-            if ') ' in alt:
-                alternativas_processadas.append(alt.split(') ', 1)[1])
-            else:
-                alternativas_processadas.append(alt)
-                
-        # Preencher até 5 alternativas
-        while len(alternativas_processadas) < 5:
-            alternativas_processadas.append('')
-        
+        # Extrair alternativas (remover a letra do início, ex: "A) Alternativa 1" -> "Alternativa 1")
+        alternativa1 = questao.get('alternativa1', '')
+        if len(alternativa1) > 3 and alternativa1[0].isalpha() and alternativa1[1:3] == ") ":
+            alternativa1 = alternativa1[3:]
+        alternativa2 = questao.get('alternativa2', '')
+        if len(alternativa2) > 3 and alternativa2[0].isalpha() and alternativa2[1:3] == ") ":
+            alternativa2 = alternativa2[3:]
+        alternativa3 = questao.get('alternativa3', '')
+        if len(alternativa3) > 3 and alternativa3[0].isalpha() and alternativa3[1:3] == ") ":
+            alternativa3 = alternativa3[3:]
+        alternativa4 = questao.get('alternativa4', '')
+        if len(alternativa4) > 3 and alternativa4[0].isalpha() and alternativa4[1:3] == ") ":
+            alternativa4 = alternativa4[3:]
+        alternativa5 = questao.get('alternativa5', '')
+        if len(alternativa5) > 3 and alternativa5[0].isalpha() and alternativa5[1:3] == ") ":
+            alternativa5 = alternativa5[3:]
+        gabarito = questao.get('gabarito', '')
+        if len(gabarito) > 3 and gabarito[0].isalpha() and gabarito[1:3] == ") ":
+            gabarito = gabarito[3:] 
+
         # Preparar o registro para inserção
         registro_questao = {
             "codigo": metadados.get('codigo', ''),
-            "enunciado": questao.get('questao', ''),
-            "alternativa1": alternativas_processadas[0],
-            "alternativa2": alternativas_processadas[1],
-            "alternativa3": alternativas_processadas[2],
-            "alternativa4": alternativas_processadas[3],
-            "alternativa5": alternativas_processadas[4],
-            "resposta": questao.get('resposta_correta', ''),
-            "explicacao": questao.get('explicacao', ''),
-            "dificuldade": questao.get('dificuldade', 'médio'),
+            "enunciado": questao.get('enunciado', ''),
+            "alternativa1": alternativa1,
+            "alternativa2": alternativa2,
+            "alternativa3": alternativa3,
+            "alternativa4": alternativa4,
+            "alternativa5": alternativa5,
+            "gabarito": gabarito,
+            "resolucao": questao.get('resolucao', ''),
+            "dificuldade": metadados.get('dificuldade', ''),
             "id_materia": id_materia
         }
         
@@ -124,13 +131,13 @@ def salvar_questao(questao):
             .insert(registro_questao)
             .execute()
         )
-        
+
         # Verificar se a inserção foi bem-sucedida
         if resultado.data and len(resultado.data) > 0:
             return True
         else:
-            return False
-            
+            return False  
+           
     except Exception as e:
         # Registrar o erro
         print(f"Erro ao salvar questão: {str(e)}")
@@ -139,20 +146,19 @@ def salvar_questao(questao):
 def salvar_questoes_aprovadas(questoes):
     """
     Salva uma lista de questões aprovadas no banco de dados.
-    
+
     Args:
-        questoes (list): Lista de questões aprovadas
-        
+        questoes (list): Lista de questões aprovadas 
     Returns:
         tuple: (número de questões salvas com sucesso, número total de questões)
     """
     # Contar questões salvas com sucesso
     questoes_salvas = 0
     total_questoes = len(questoes)
-    
+
     # Para cada questão, tentar salvar
     for questao in questoes:
         if salvar_questao(questao):
             questoes_salvas += 1
-    
+
     return (questoes_salvas, total_questoes)

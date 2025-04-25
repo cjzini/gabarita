@@ -56,7 +56,8 @@ def gerar_questao(item_json, dificuldade):
         O gabarito deverá ser apresentado na alternativa na forma literal, ou seja, repetindo a descrição da alternativa correta.
         Um exemplo do formato do gabarito: Descrição da alternativa 4
         A resolução deverá ser elaborada de maneira clara e interessante, de maneira que o aluno possa entender e aprender o conteúdo da questão.
-        Quando houver fórmulas matemáticas, utilize o formato LaTeX para apresentá-las.
+        Quando houver fórmulas matemáticas, utilize o formato LaTeX para apresentá-las, ou seja, use sempre o símbolo $ para delimitar a fórmula matemática.
+        É muito importante que todas as fórmulas estejam no formato LaTeX, se preciso faça uma checagem dupla para certificar-se disso.
         Exemplo de como apresentar o teorema de pitágoras: $a^2 + b^2 = c^2$.
         
         4. Contexto

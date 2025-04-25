@@ -4,6 +4,7 @@ import time
 import csv
 import io
 from services.openai_client import gerar_lista_questoes
+from services.supabase_client import salvar_questoes_aprovadas
 
 # Inicializa o estado da sessão para contar questões aprovadas
 if 'questoes_geradas' not in st.session_state:
@@ -532,26 +533,28 @@ if st.session_state.get('geracao_realizada', False) and st.session_state.questoe
         # Mostrar resumo de aprovação
         percentual = (questoes_aprovadas / total_questoes) * 100 if total_questoes > 0 else 0
         st.info(f"Status de aprovação: {questoes_aprovadas} de {total_questoes} questões aprovadas ({percentual:.1f}%).")  
-        # Botões para download em duas colunas
+        # Adicionar um botão para salvar no Supabase
+        if questoes_aprovadas > 0:
+            if st.button("💾 Salvar questões aprovadas no banco de dados", use_container_width=True):
+                # Filtrar apenas questões aprovadas
+                questoes_aprovadas_lista = [q for q in st.session_state.questoes_geradas if q.get('aprovado', False)]      
+                # Tentar salvar no Supabase
+                with st.spinner("Salvando questões no banco de dados..."):
+                    try:
+                        # Chamar a função para salvar questões aprovadas
+                        questoes_salvas, total = salvar_questoes_aprovadas(questoes_aprovadas_lista)       
+                        if questoes_salvas > 0:
+                            st.success(f"{questoes_salvas} de {total} questões foram salvas no banco de dados Supabase com sucesso!")
+                        else:
+                            st.error("Não foi possível salvar nenhuma questão no banco de dados.")   
+                    except Exception as e:
+                        st.error(f"Erro ao salvar no banco de dados: {str(e)}")
+        else:
+            st.warning("Aprove pelo menos uma questão para poder salvar no banco de dados.")
+        # Botões para download em três colunas
         dl_col1, dl_col2, dl_col3 = st.columns(3)
-        # Botão para baixar todas as questões
+        # Botão para aprovar todas as questões
         with dl_col1:
-            # Gerar dados em CSV para todas as questões
-            # csv_data = converter_questoes_para_csv(st.session_state.questoes_geradas)
-            # st.download_button(
-            #     label="Baixar todas as questões (CSV)",
-            #     data=csv_data,
-            #     file_name="questoes_geradas.csv",
-            #     mime="text/csv"
-            # )
-            # Gerar dados em Excel para todas as questões
-            # excel_data = converter_questoes_para_excel(st.session_state.questoes_geradas)
-            # st.download_button(
-            #     label="Baixar todas as questões (Excel)",
-            #     data=excel_data,
-            #     file_name="questoes_geradas.xlsx",
-            #     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            # )
             # Contar quantas questões não estão aprovadas
             questoes_nao_aprovadas = total_questoes - questoes_aprovadas
             if questoes_nao_aprovadas > 0:
@@ -567,14 +570,6 @@ if st.session_state.get('geracao_realizada', False) and st.session_state.questoe
             # Filtrar apenas questões aprovadas
             questoes_aprovadas_lista = [q for q in st.session_state.questoes_geradas if q.get('aprovado', False)]         
             if questoes_aprovadas_lista:
-                # Gerar dados em CSV apenas para questões aprovadas
-                # csv_aprovadas = converter_questoes_para_csv(questoes_aprovadas_lista)
-                # st.download_button(
-                #     label="Baixar apenas aprovadas (CSV)",
-                #     data=csv_aprovadas,
-                #     file_name="questoes_aprovadas.csv",
-                #     mime="text/csv"
-                # )
                 # Gerar dados em Excel apenas para questões aprovadas
                 excel_aprovadas = converter_questoes_para_excel(questoes_aprovadas_lista)
                 st.download_button(
@@ -590,14 +585,6 @@ if st.session_state.get('geracao_realizada', False) and st.session_state.questoe
             # Filtrar apenas questões NÃO aprovadas
             questoes_nao_aprovadas_lista = [q for q in st.session_state.questoes_geradas if not q.get('aprovado', False)]      
             if questoes_nao_aprovadas_lista:
-                # Gerar dados em CSV apenas para questões NÃO aprovadas
-                # csv_nao_aprovadas = converter_questoes_para_csv(questoes_nao_aprovadas_lista)
-                # st.download_button(
-                #     label="Baixar apenas não aprovadas (CSV)",
-                #     data=csv_nao_aprovadas,
-                #     file_name="questoes_nao_aprovadas.csv",
-                #     mime="text/csv"
-                # )
                 # Gerar dados em Excel apenas para metadados das questões NÃO aprovadas
                 excel_nao_aprovadas = converter_questoes_nao_aprovadas_para_excel(questoes_nao_aprovadas_lista)
                 st.download_button(
