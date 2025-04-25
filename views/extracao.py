@@ -172,6 +172,43 @@ def converter_questoes_nao_aprovadas_para_excel(questoes):
     output.close()    
     return excel_data
 
+# Função para regenerar uma única questão
+def regenerar_questao(indice):
+    """
+    Regenera uma única questão mantendo as demais inalteradas.
+    Args:
+        indice (int): Índice da questão a ser regenerada
+    Returns:
+        bool: True se a questão foi regenerada com sucesso, False caso contrário
+    """
+    # Verificar se o índice é válido
+    if indice < 0 or indice >= len(st.session_state.questoes_geradas):
+        return False
+    # Obter o item original do JSON dos dados carregados
+    if not st.session_state.json_data or indice >= len(st.session_state.json_data):
+        return False   
+    # Obter o item correspondente do JSON
+    item = st.session_state.json_data[indice]
+    # Criar um container para mostrar o progresso
+    progress_container = st.empty()
+    try:
+        # Informar que estamos regenerando
+        progress_container.info(f"Regenerando questão {indice+1}...")
+        # Usar o nível de dificuldade atual da sessão
+        questao = gerar_lista_questoes([item], st.session_state.dificuldade)[0]
+        # Substituir a questão antiga pela nova
+        st.session_state.questoes_geradas[indice] = questao
+        # Pequena pausa para não sobrecarregar a API
+        time.sleep(0.5)
+        # Limpar indicador de progresso
+        progress_container.empty()
+        return True
+    except Exception as e:
+        progress_container.error(f"Erro ao regenerar questão: {str(e)}")
+        time.sleep(2)  # Mostrar o erro por alguns segundos
+        progress_container.empty()
+        return False
+
 # Função para converter questões para formato CSV
 def converter_questoes_para_csv(questoes):
     """
@@ -491,7 +528,7 @@ if st.session_state.get('geracao_realizada', False) and st.session_state.questoe
                         st.rerun()           
             else:
                 # Adicionar botões de ação (editar e aprovar/cancelar aprovação)
-                btn_col1, btn_col2 = st.columns([3, 1])
+                btn_col1, btn_col2, btn_col3 = st.columns([2, 1, 1])
                 # Botão de edição
                 with btn_col1:
                     if st.button("Editar questão", key=f"btn_editar_{questao_key}"):
@@ -507,9 +544,16 @@ if st.session_state.get('geracao_realizada', False) and st.session_state.questoe
                             'resolucao': questao.get('resolucao', '')
                         }
                         st.session_state[f"edit_mode_{i}"] = True
-                        st.rerun()          
-                # Botão de aprovação
+                        st.rerun()
+                # Botão para regenerar a questão
                 with btn_col2:
+                    if st.button("🔄 Regenerar", key=f"btn_regenerar_{questao_key}"):
+                        # Chamar a função para regenerar a questão
+                        if regenerar_questao(i):
+                            st.success(f"Questão {i+1} regenerada com sucesso!")
+                            st.rerun()          
+                # Botão de aprovação
+                with btn_col3:
                     # Se já estiver aprovada, mostrar botão para cancelar aprovação
                     if questao.get('aprovado', False):
                         if st.button("Cancelar aprovação", key=f"btn_cancelar_{questao_key}"):
@@ -544,7 +588,7 @@ if st.session_state.get('geracao_realizada', False) and st.session_state.questoe
                         # Chamar a função para salvar questões aprovadas
                         questoes_salvas, total = salvar_questoes_aprovadas(questoes_aprovadas_lista)       
                         if questoes_salvas > 0:
-                            st.success(f"{questoes_salvas} de {total} questões foram salvas no banco de dados Supabase com sucesso!")
+                            st.success(f"{questoes_salvas} de {total} questões foram salvas no banco de dados com sucesso!")
                         else:
                             st.error("Não foi possível salvar nenhuma questão no banco de dados.")   
                     except Exception as e:
