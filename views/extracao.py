@@ -6,26 +6,12 @@ import io
 from services.openai_client import gerar_lista_questoes
 from services.supabase_client import salvar_questoes_aprovadas
 
-# Inicializa o estado da sessão para contar questões aprovadas
-if 'questoes_geradas' not in st.session_state:
-    st.session_state.questoes_geradas = []  
-# Indica se a geração de questões já foi realizada
-if 'geracao_realizada' not in st.session_state:
-    st.session_state.geracao_realizada = False   
-# Armazena o número de questões selecionado
-if 'num_questoes' not in st.session_state:
-    st.session_state.num_questoes = 3
-# Armazena o nível de dificuldade selecionado
-if 'dificuldade' not in st.session_state:
-    st.session_state.dificuldade = "médio"   
-# Armazena os dados do arquivo em formato JSON
-if 'json_data' not in st.session_state:
-    st.session_state.json_data = None
+
 
 # Função para atualizar o status de aprovação de uma questão
 def aprovar_questao(indice):
     if 0 <= indice < len(st.session_state.questoes_geradas):
-        st.session_state.questoes_geradas[indice]['aprovado'] = True 
+        st.session_state.questoes_geradas[indice]['aprovado'] = True
 
 # Função para cancelar aprovação
 def cancelar_aprovacao(indice):
