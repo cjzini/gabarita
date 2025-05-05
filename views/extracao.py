@@ -1,297 +1,6 @@
 import streamlit as st
-import pandas as pd
-import time
-import csv
-import io
-from services.openai_client import gerar_lista_questoes
+import utils.question_utils as qu
 from services.supabase_client import salvar_questoes_aprovadas
-
-
-
-# Função para atualizar o status de aprovação de uma questão
-def aprovar_questao(indice):
-    if 0 <= indice < len(st.session_state.questoes_geradas):
-        st.session_state.questoes_geradas[indice]['aprovado'] = True
-
-# Função para cancelar aprovação
-def cancelar_aprovacao(indice):
-    if 0 <= indice < len(st.session_state.questoes_geradas):
-        st.session_state.questoes_geradas[indice]['aprovado'] = False
-
-# Função para aprovar todas as questões de uma vez
-def aprovar_todas_questoes():
-    for i in range(len(st.session_state.questoes_geradas)):
-        st.session_state.questoes_geradas[i]['aprovado'] = True         
-
-# Função para contar questões aprovadas
-def contar_questoes_aprovadas():
-    return sum(1 for q in st.session_state.questoes_geradas if q.get('aprovado', False))
-
-# Função para editar questão
-def editar_questao(indice, dados_editados):
-    """
-    Atualiza uma questão com os dados editados.  
-    Args:
-        indice (int): Índice da questão a ser editada
-        dados_editados (dict): Dicionário com os novos dados da questão
-    """
-    if 'questoes_geradas' not in st.session_state or indice >= len(st.session_state.questoes_geradas):
-        return False  
-    # Atualizar os campos da questão com os dados editados
-    questao = st.session_state.questoes_geradas[indice]
-    questao['enunciado'] = dados_editados['enunciado']
-    questao['alternativa1'] = dados_editados['alternativa1']
-    questao['alternativa2'] = dados_editados['alternativa2']
-    questao['alternativa3'] = dados_editados['alternativa3']
-    questao['alternativa4'] = dados_editados['alternativa4']
-    questao['alternativa5'] = dados_editados['alternativa5']
-    questao['gabarito'] = dados_editados['gabarito']
-    questao['resolucao'] = dados_editados['resolucao']
-    # Atualizar metadados se necessário
-    if 'metadados' in dados_editados:
-        questao['metadados'] = dados_editados['metadados']
-    # Salvar a questão atualizada de volta na lista
-    st.session_state.questoes_geradas[indice] = questao
-    return True
-
-# Função para converter questões para formato Excel completo (com todas as colunas)
-def converter_questoes_para_excel(questoes):
-    """
-    Converte questões do formato JSON para Excel com as colunas completas.    
-    Args:
-        questoes (list): Lista de questões no formato JSON
-    Returns:
-        bytes: Arquivo Excel em formato bytes
-    """
-    # Criar listas para armazenar os dados
-    dados = []
-    # Para cada questão, extrair os dados
-    for questao in questoes:
-        # Extrair alternativas (remover a letra do início, ex: "A) Alternativa 1" -> "Alternativa 1")
-        alternativa1 = questao.get('alternativa1', '')
-        if len(alternativa1) > 3 and alternativa1[0].isalpha() and alternativa1[1:3] == ") ":
-            alternativa1 = alternativa1[3:]
-        alternativa2 = questao.get('alternativa2', '')
-        if len(alternativa2) > 3 and alternativa2[0].isalpha() and alternativa2[1:3] == ") ":
-            alternativa2 = alternativa2[3:]
-        alternativa3 = questao.get('alternativa3', '')
-        if len(alternativa3) > 3 and alternativa3[0].isalpha() and alternativa3[1:3] == ") ":
-            alternativa3 = alternativa3[3:]
-        alternativa4 = questao.get('alternativa4', '')
-        if len(alternativa4) > 3 and alternativa4[0].isalpha() and alternativa4[1:3] == ") ":
-            alternativa4 = alternativa4[3:]
-        alternativa5 = questao.get('alternativa5', '')
-        if len(alternativa5) > 3 and alternativa5[0].isalpha() and alternativa5[1:3] == ") ":
-            alternativa5 = alternativa5[3:]
-        gabarito = questao.get('gabarito', '')
-        if len(gabarito) > 3 and gabarito[0].isalpha() and gabarito[1:3] == ") ":
-            gabarito = gabarito[3:]
-        # Obter metadados
-        metadados = questao.get('metadados', {})
-        # Preparar a linha de dados
-        linha = {
-            'codigo': metadados.get('codigo', ''),
-            'materia': metadados.get('materia', ''),
-            'tema': metadados.get('tema', ''),
-            'subtema': metadados.get('subtema', ''),
-            'assunto': metadados.get('assunto', ''),
-            'dificuldade': metadados.get('dificuldade', ''),
-            'enunciado': questao.get('enunciado', ''),
-            'alternativa1': alternativa1,
-            'alternativa2': alternativa2,
-            'alternativa3': alternativa3,
-            'alternativa4': alternativa4,
-            'alternativa5': alternativa5,
-            'gabarito': gabarito,
-            'resolucao': questao.get('resolucao', '')
-        }
-        dados.append(linha)
-    # Criar um DataFrame com os dados
-    df = pd.DataFrame(dados)
-    # Escapes the unicode characters if they exist
-    #df = df.applymap(lambda x: x.encode('unicode_escape').decode('utf-8') if isinstance(x, str) else x)
-    #df = df.apply(lambda col: col.map(lambda x: x.encode('unicode_escape').decode('utf-8') if isinstance(x, str) else x))
-    # Criar um buffer para armazenar o arquivo Excel
-    output = io.BytesIO()
-    # Escrever o DataFrame no arquivo Excel
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        df.to_excel(writer, index=False, sheet_name='Questões')
-    # Obter o conteúdo do Excel como bytes
-    excel_data = output.getvalue()
-    output.close()
-    return excel_data
-
-# Função para converter questões não aprovadas para Excel simplificado (apenas metadados)
-def converter_questoes_nao_aprovadas_para_excel(questoes):
-    """
-    Converte questões não aprovadas para Excel com apenas os campos de metadados.
-    Args:
-        questoes (list): Lista de questões não aprovadas no formato JSON
-    Returns:
-        bytes: Arquivo Excel em formato bytes
-    """
-    # Criar listas para armazenar os dados
-    dados = []
-    # Para cada questão, extrair apenas os metadados
-    for questao in questoes:
-        # Obter metadados
-        metadados = questao.get('metadados', {})
-        # Preparar a linha de dados
-        linha = {
-            'codigo': metadados.get('codigo', ''),
-            'materia': metadados.get('materia', ''),
-            'tema': metadados.get('tema', ''),
-            'subtema': metadados.get('subtema', ''),
-            'assunto': metadados.get('assunto', '')
-        }
-        
-        dados.append(linha)
-    # Criar um DataFrame com os dados
-    df = pd.DataFrame(dados)
-    # Criar um buffer para armazenar o arquivo Excel
-    output = io.BytesIO()
-    # Escrever o DataFrame no arquivo Excel
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        df.to_excel(writer, index=False, sheet_name='Questões não aprovadas')
-    # Obter o conteúdo do Excel como bytes
-    excel_data = output.getvalue()
-    output.close()    
-    return excel_data
-
-# Função para regenerar uma única questão
-def regenerar_questao(indice):
-    """
-    Regenera uma única questão mantendo as demais inalteradas.
-    Args:
-        indice (int): Índice da questão a ser regenerada
-    Returns:
-        bool: True se a questão foi regenerada com sucesso, False caso contrário
-    """
-    # Verificar se o índice é válido
-    if indice < 0 or indice >= len(st.session_state.questoes_geradas):
-        return False
-    # Obter o item original do JSON dos dados carregados
-    if not st.session_state.json_data or indice >= len(st.session_state.json_data):
-        return False   
-    # Obter o item correspondente do JSON
-    item = st.session_state.json_data[indice]
-    # Criar um container para mostrar o progresso
-    progress_container = st.empty()
-    try:
-        # Informar que estamos regenerando
-        progress_container.info(f"Regenerando questão {indice+1}...")
-        # Usar o nível de dificuldade atual da sessão
-        questao = gerar_lista_questoes([item], st.session_state.dificuldade)[0]
-        # Substituir a questão antiga pela nova
-        st.session_state.questoes_geradas[indice] = questao
-        # Pequena pausa para não sobrecarregar a API
-        time.sleep(0.5)
-        # Limpar indicador de progresso
-        progress_container.empty()
-        return True
-    except Exception as e:
-        progress_container.error(f"Erro ao regenerar questão: {str(e)}")
-        time.sleep(2)  # Mostrar o erro por alguns segundos
-        progress_container.empty()
-        return False
-
-# Função para converter questões para formato CSV
-def converter_questoes_para_csv(questoes):
-    """
-    Converte questões do formato JSON para CSV com as colunas especificadas. 
-    Args:
-        questoes (list): Lista de questões no formato JSON
-    Returns:
-        str: String contendo dados CSV
-    """
-    # Criar um buffer de string para armazenar o CSV
-    output = io.StringIO()
-    # Definir as colunas do CSV
-    fieldnames = [
-        'codigo', 'materia', 'tema', 'subtema', 'assunto', 
-        'enunciado', 'alternativa1', 'alternativa2', 'alternativa3', 
-        'alternativa4', 'alternativa5', 'gabarito', 'resolucao'
-    ]
-    # Criar o escritor CSV
-    writer = csv.DictWriter(output, fieldnames=fieldnames)  
-    # Escrever o cabeçalho
-    writer.writeheader()
-    # Para cada questão, extrair os dados e escrever no CSV
-    for questao in questoes:
-        # Extrair alternativas (remover a letra do início, ex: "A) Alternativa 1" -> "Alternativa 1")
-        alternativa1 = questao.get('alternativa1', '')
-        if len(alternativa1) > 3 and alternativa1[0].isalpha() and alternativa1[1:3] == ") ":
-            alternativa1 = alternativa1[3:]
-        alternativa2 = questao.get('alternativa2', '')
-        if len(alternativa2) > 3 and alternativa2[0].isalpha() and alternativa2[1:3] == ") ":
-            alternativa2 = alternativa2[3:]
-        alternativa3 = questao.get('alternativa3', '')
-        if len(alternativa3) > 3 and alternativa3[0].isalpha() and alternativa3[1:3] == ") ":
-            alternativa3 = alternativa3[3:]
-        alternativa4 = questao.get('alternativa4', '')
-        if len(alternativa4) > 3 and alternativa4[0].isalpha() and alternativa4[1:3] == ") ":
-            alternativa4 = alternativa4[3:]
-        alternativa5 = questao.get('alternativa5', '')
-        if len(alternativa5) > 3 and alternativa5[0].isalpha() and alternativa5[1:3] == ") ":
-            alternativa5 = alternativa5[3:]
-        gabarito = questao.get('gabarito', '')
-        if len(gabarito) > 3 and gabarito[0].isalpha() and gabarito[1:3] == ") ":
-            gabarito = gabarito[3:]       
-        # Obter metadados
-        metadados = questao.get('metadados', {})
-        # Preparar a linha do CSV
-        linha = {
-            'codigo': metadados.get('codigo', ''),
-            'materia': metadados.get('materia', ''),
-            'tema': metadados.get('tema', ''),
-            'subtema': metadados.get('subtema', ''),
-            'assunto': metadados.get('assunto', ''),
-            'dificuldade': metadados.get('dificuldade', ''),
-            'enunciado': questao.get('enunciado', ''),
-            'alternativa1': alternativa1,
-            'alternativa2': alternativa2,
-            'alternativa3': alternativa3,
-            'alternativa4': alternativa4,
-            'alternativa5': alternativa5,
-            'gabarito': gabarito,
-            'resolucao': questao.get('resolucao', '')
-        }
-        # Escrever a linha no CSV
-        writer.writerow(linha)
-    # Obter o conteúdo do CSV como string
-    csv_string = output.getvalue()
-    output.close()
-    return csv_string
- 
-# Função para gerar questões
-def gerar_questoes():
-    # Marcar que a geração foi realizada
-    st.session_state.geracao_realizada = True   
-    # Limitar o número de questões ao selecionado pelo usuário
-    json_data_selecionado = st.session_state.json_data[:st.session_state.num_questoes]   
-    # Limpar questões anteriores
-    st.session_state.questoes_geradas = []    
-    # Criar um container para mostrar o progresso
-    progress_container = st.empty()
-    progress_bar = st.progress(0)   
-    # Gerar as questões
-    for i, item in enumerate(json_data_selecionado):
-        # Atualizar progresso
-        progresso = (i + 1) / len(json_data_selecionado)
-        progress_bar.progress(progresso)
-        progress_container.text(f"Processando item {i+1} de {len(json_data_selecionado)} - {item.get('materia', 'N/A')} - {item.get('assunto', 'N/A')}  - Dificuldade: {st.session_state.dificuldade}")        
-        try:
-            questao = gerar_lista_questoes([item], st.session_state.dificuldade)[0]
-            st.session_state.questoes_geradas.append(questao)
-            # Pequena pausa para não sobrecarregar a API
-            time.sleep(0.5)
-        except Exception as e:
-            st.error(f"Erro ao gerar questão para o item {i+1}: {str(e)}")   
-    # Limpar indicadores de progresso
-    progress_container.empty()
-    progress_bar.empty()            
-    # Retornar o número de questões geradas
-    return len(st.session_state.questoes_geradas)
 
 st.title('Geração de Questões')
 st.write("Faça o upload de um arquivo Excel (.xlsx) ou CSV (.csv)")
@@ -302,54 +11,13 @@ if 'num_questoes' not in st.session_state:
 
 # File upload component
 uploaded_file = st.file_uploader("Escolha um arquivo", type=["xlsx", "csv"])
-
-# Function to process the uploaded file
-def process_file(file):
-    try:
-        # Detect file type and read accordingly
-        if file.name.endswith('.xlsx'):
-            df = pd.read_excel(file)
-        elif file.name.endswith('.csv'):
-            # Try to read with different encodings and delimiters
-            try:
-                df = pd.read_csv(file, encoding='utf-8')
-            except UnicodeDecodeError:
-                try:
-                    df = pd.read_csv(file, encoding='latin1')
-                except:
-                    df = pd.read_csv(file, encoding='ISO-8859-1')           
-            # If semicolon is the delimiter, parse again
-            if len(df.columns) == 1 and df.columns[0].count(';') > 0:
-                file.seek(0)  # Go back to the beginning of the file
-                df = pd.read_csv(file, sep=';')
-        else:
-            st.error("Formato de arquivo não suportado.")
-            return None
-        # Expected column names
-        expected_columns = ['codigo', 'materia', 'tema', 'subtema', 'assunto']
-        # Check if file has the required columns or if we need to rename columns
-        if not all(col in df.columns for col in expected_columns):
-            # If the file has the right number of columns but wrong names
-            if len(df.columns) >= len(expected_columns):
-                # Rename the first 5 columns to the expected names
-                column_mapping = {df.columns[i]: expected_columns[i] for i in range(min(len(df.columns), len(expected_columns)))}
-                df = df.rename(columns=column_mapping)
-            else:
-                st.error(f"O arquivo não contém todas as colunas necessárias. Colunas esperadas: {', '.join(expected_columns)}")
-                return None                
-        # Convert DataFrame to list of dictionaries (JSON-like format)
-        result = df.to_dict(orient='records')
-        return result
-    except Exception as e:
-        st.error(f"Erro ao processar o arquivo: {str(e)}")
-        return None
     
 # Display content based on uploaded file
 if uploaded_file is not None:
     st.write("Arquivo carregado com sucesso!") 
     # Add button to process file
     with st.spinner("Processando Arquivo..."):
-        json_data = process_file(uploaded_file)
+        json_data = qu.process_file(uploaded_file)
         # Salvar os dados no estado da sessão
         st.session_state.json_data = json_data
     if json_data:
@@ -379,7 +47,7 @@ if uploaded_file is not None:
         # Botão para gerar questões
         if st.button("Gerar Questões", key="btn_gerar_questoes"):
             # Chamar a função para gerar questões (não precisa de spinner, já tem barra de progresso)
-            num_geradas = gerar_questoes()
+            num_geradas = qu.gerar_questoes()
             if num_geradas > 0:
                 st.success(f"{num_geradas} questões geradas com sucesso!")
             st.session_state.geracao_realizada = True
@@ -504,7 +172,7 @@ if st.session_state.get('geracao_realizada', False) and st.session_state.questoe
                             'resolucao': resolucao_editada
                         }
                         # Chamar a função para atualizar a questão
-                        editar_questao(i, dados_editados)
+                        qu.editar_questao(i, dados_editados)
                         # Sair do modo de edição
                         st.session_state[f"edit_mode_{i}"] = False
                         st.rerun()
@@ -535,7 +203,7 @@ if st.session_state.get('geracao_realizada', False) and st.session_state.questoe
                 with btn_col2:
                     if st.button("🔄 Regenerar", key=f"btn_regenerar_{questao_key}"):
                         # Chamar a função para regenerar a questão
-                        if regenerar_questao(i):
+                        if qu.regenerar_questao(i):
                             st.success(f"Questão {i+1} regenerada com sucesso!")
                             st.rerun()          
                 # Botão de aprovação
@@ -544,20 +212,21 @@ if st.session_state.get('geracao_realizada', False) and st.session_state.questoe
                     if questao.get('aprovado', False):
                         if st.button("Cancelar aprovação", key=f"btn_cancelar_{questao_key}"):
                             # Chamar a função de callback
-                            cancelar_aprovacao(i)
+                            qu.cancelar_aprovacao(i)
                             st.rerun()  # Recarregar apenas os componentes
                     else:
                         # Se não estiver aprovada, mostrar botão de aprovar
                         if st.button("Aprovar questão", key=f"btn_aprovar_{questao_key}"):
                             # Chamar a função de callback
-                            aprovar_questao(i)
+                            qu.aprovar_questao(i)
                             st.rerun()  # Recarregar apenas os componentes
             # Adiciona uma linha de separação entre as questões
             st.markdown("---")
-    # Resumo e botões de download
+
+    # -----------------------  Resumo e botões de download ---------------------------
     st.subheader("Resumo e download")
     # Contar questões aprovadas
-    questoes_aprovadas = contar_questoes_aprovadas()
+    questoes_aprovadas = qu.contar_questoes_aprovadas()
     total_questoes = len(st.session_state.questoes_geradas)
     if total_questoes > 0:
         # Mostrar resumo de aprovação
@@ -571,8 +240,10 @@ if st.session_state.get('geracao_realizada', False) and st.session_state.questoe
                 # Tentar salvar no Supabase
                 with st.spinner("Salvando questões no banco de dados..."):
                     try:
+                        # Obter o ID do usuário atual da sessão
+                        user_id = st.session_state.get('user_id')
                         # Chamar a função para salvar questões aprovadas
-                        questoes_salvas, total = salvar_questoes_aprovadas(questoes_aprovadas_lista)       
+                        questoes_salvas, total = salvar_questoes_aprovadas(questoes_aprovadas_lista, user_id)       
                         if questoes_salvas > 0:
                             st.success(f"{questoes_salvas} de {total} questões foram salvas no banco de dados com sucesso!")
                         else:
@@ -585,43 +256,44 @@ if st.session_state.get('geracao_realizada', False) and st.session_state.questoe
         dl_col1, dl_col2, dl_col3 = st.columns(3)
         # Botão para aprovar todas as questões
         with dl_col1:
-            # Contar quantas questões não estão aprovadas
-            questoes_nao_aprovadas = total_questoes - questoes_aprovadas
-            if questoes_nao_aprovadas > 0:
-                if st.button(f"Aprovar todas as questões ({questoes_nao_aprovadas} pendentes)"):
-                    # Chamar a função para aprovar todas as questões
-                    aprovar_todas_questoes()
-                    st.success("Todas as questões foram aprovadas!")
-                    st.rerun()
-            else:
-                st.success("Todas as questões já estão aprovadas!")   
-        # Botão para baixar apenas questões aprovadas
-        with dl_col2:
-            # Filtrar apenas questões aprovadas
-            questoes_aprovadas_lista = [q for q in st.session_state.questoes_geradas if q.get('aprovado', False)]         
-            if questoes_aprovadas_lista:
-                # Gerar dados em Excel apenas para questões aprovadas
-                excel_aprovadas = converter_questoes_para_excel(questoes_aprovadas_lista)
-                st.download_button(
-                    label="Baixar apenas aprovadas (Excel)",
-                    data=excel_aprovadas,
-                    file_name="questoes_aprovadas.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                )
-            else:
-                st.write("Nenhuma questão aprovada ainda")
-        # Botão para baixar apenas questões NÃO aprovadas em CSV
-        with dl_col3:
-            # Filtrar apenas questões NÃO aprovadas
-            questoes_nao_aprovadas_lista = [q for q in st.session_state.questoes_geradas if not q.get('aprovado', False)]      
-            if questoes_nao_aprovadas_lista:
-                # Gerar dados em Excel apenas para metadados das questões NÃO aprovadas
-                excel_nao_aprovadas = converter_questoes_nao_aprovadas_para_excel(questoes_nao_aprovadas_lista)
-                st.download_button(
-                    label="Baixar apenas não aprovadas (Excel)",
-                    data=excel_nao_aprovadas,
-                    file_name="questoes_nao_aprovadas.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                )
-            else:
-                st.write("Todas as questões já foram aprovadas")
+            dlb_col1, dlb_col2, dlb_col3 = st.columns(3)
+            with dlb_col1:
+                # Contar quantas questões não estão aprovadas
+                questoes_nao_aprovadas = total_questoes - questoes_aprovadas
+                if questoes_nao_aprovadas > 0:
+                    if st.button(f"Aprovar todas as questões ({questoes_nao_aprovadas} pendentes)"):
+                        # Chamar a função para aprovar todas as questões
+                        qu.aprovar_todas_questoes()
+                        st.success("Todas as questões foram aprovadas!")
+                        st.rerun()
+                else:
+                    st.success("Todas as questões já estão aprovadas!")
+            with dlb_col2:
+                # Filtrar apenas questões aprovadas
+                questoes_aprovadas_lista = [q for q in st.session_state.questoes_geradas if q.get('aprovado', False)]         
+                if questoes_aprovadas_lista:
+                    # Gerar dados em Excel apenas para questões aprovadas
+                    excel_aprovadas = qu.converter_questoes_para_excel(questoes_aprovadas_lista)
+                    st.download_button(
+                        label="Baixar apenas aprovadas (Excel)",
+                        data=excel_aprovadas,
+                        file_name="questoes_aprovadas.xlsx",
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    )
+                else:
+                    st.write("Nenhuma questão aprovada ainda")
+            with dlb_col3:
+                # Filtrar apenas questões NÃO aprovadas
+                questoes_nao_aprovadas_lista = [q for q in st.session_state.questoes_geradas if not q.get('aprovado', False)]      
+                if questoes_nao_aprovadas_lista:
+                    # Gerar dados em Excel apenas para metadados das questões NÃO aprovadas
+                    excel_nao_aprovadas = qu.converter_questoes_nao_aprovadas_para_excel(questoes_nao_aprovadas_lista)
+                    st.download_button(
+                        label="Baixar apenas não aprovadas (Excel)",
+                        data=excel_nao_aprovadas,
+                        file_name="questoes_nao_aprovadas.xlsx",
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    )
+                else:
+                    st.write("Todas as questões já foram aprovadas")  
+        

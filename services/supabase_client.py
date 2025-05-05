@@ -68,7 +68,7 @@ def obter_materia_id(materia, tema, subtema, assunto):
         print(f"Erro ao obter ou criar matéria: {str(e)}")
         raise e
 
-def salvar_questao(questao):
+def salvar_questao(questao, user_id=None):
     """
     Salva uma questão no banco de dados.
     
@@ -124,6 +124,9 @@ def salvar_questao(questao):
             "dificuldade": metadados.get('dificuldade', ''),
             "id_materia": id_materia
         }
+        # Adicionar o ID do usuário que está criando a questão, se fornecido
+        if user_id:
+            registro_questao["id_user"] = user_id
         
         # Inserir na tabela questoes
         resultado = (
@@ -143,7 +146,7 @@ def salvar_questao(questao):
         print(f"Erro ao salvar questão: {str(e)}")
         return False
 
-def salvar_questoes_aprovadas(questoes):
+def salvar_questoes_aprovadas(questoes, user_id=None):
     """
     Salva uma lista de questões aprovadas no banco de dados.
 
@@ -158,7 +161,31 @@ def salvar_questoes_aprovadas(questoes):
 
     # Para cada questão, tentar salvar
     for questao in questoes:
-        if salvar_questao(questao):
+        if salvar_questao(questao, user_id):
             questoes_salvas += 1
 
     return (questoes_salvas, total_questoes)
+
+def is_admin_user(user_id):
+    """
+    Verifica se o usuário tem perfil de administrador na tabela profiles.
+    
+    Args:
+        user_id (str): ID do usuário   
+    Returns:
+        bool: True se o usuário for admin, False caso contrário
+    """
+    try:
+        # Conectar ao Supabase
+        client = get_supabase_connection()
+        
+        # Consultar a tabela profiles para o usuário especificado
+        response = client.table('profiles').select('role').eq('id', user_id).execute()
+        
+        # Verificar se o usuário tem role de admin
+        if response.data and len(response.data) > 0:
+            return response.data[0].get('role') == 'admin'
+        return False
+    except Exception as e:
+        print(f"Erro ao verificar perfil admin: {str(e)}")
+        return False

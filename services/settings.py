@@ -22,3 +22,5 @@ latex_expr = "a^2 + b^2 = c^2"
 st.write(f"O teorema de pitágoras é dado pela seguinte equação: ${latex_expr}$.")
 
 st.write(f"O teorema de pitágoras é dado pela seguinte equação: $a^2 + b^2 = c^2$.")
+
+st.write(st.session_state.get('user_id'))

@@ -115,10 +115,11 @@ def main_page():
     account_pages = [settings, logout_page]
     st.logo("images/logo_gabarita.png")
     page_dict = {}
-    if st.session_state.role in ["integ", "admin"]:
+    if st.session_state.role in ["user", "admin"]:
         page_dict["Menu"] = user_pages
     if len(page_dict) > 0:
         pg = st.navigation(page_dict | {"Conta": account_pages})
+        
     else:
         pg = st.navigation([st.Page(login_page)])
     pg.run()

@@ -219,3 +219,43 @@ def gerar_questoes():
     progress_bar.empty()            
     # Retornar o número de questões geradas
     return len(st.session_state.questoes_geradas)
+
+def process_file(file):
+    try:
+        # Detect file type and read accordingly
+        if file.name.endswith('.xlsx'):
+            df = pd.read_excel(file)
+        elif file.name.endswith('.csv'):
+            # Try to read with different encodings and delimiters
+            try:
+                df = pd.read_csv(file, encoding='utf-8')
+            except UnicodeDecodeError:
+                try:
+                    df = pd.read_csv(file, encoding='latin1')
+                except:
+                    df = pd.read_csv(file, encoding='ISO-8859-1')           
+            # If semicolon is the delimiter, parse again
+            if len(df.columns) == 1 and df.columns[0].count(';') > 0:
+                file.seek(0)  # Go back to the beginning of the file
+                df = pd.read_csv(file, sep=';')
+        else:
+            st.error("Formato de arquivo não suportado.")
+            return None
+        # Expected column names
+        expected_columns = ['codigo', 'materia', 'tema', 'subtema', 'assunto']
+        # Check if file has the required columns or if we need to rename columns
+        if not all(col in df.columns for col in expected_columns):
+            # If the file has the right number of columns but wrong names
+            if len(df.columns) >= len(expected_columns):
+                # Rename the first 5 columns to the expected names
+                column_mapping = {df.columns[i]: expected_columns[i] for i in range(min(len(df.columns), len(expected_columns)))}
+                df = df.rename(columns=column_mapping)
+            else:
+                st.error(f"O arquivo não contém todas as colunas necessárias. Colunas esperadas: {', '.join(expected_columns)}")
+                return None                
+        # Convert DataFrame to list of dictionaries (JSON-like format)
+        result = df.to_dict(orient='records')
+        return result
+    except Exception as e:
+        st.error(f"Erro ao processar o arquivo: {str(e)}")
+        return None
