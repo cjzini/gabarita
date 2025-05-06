@@ -102,6 +102,11 @@ def main_page():
         title="Gerar Questões",
         icon=":material/convert_to_text:",
     )
+    usuarios = st.Page(
+        "views/usuarios.py",
+        title="Gerenciar Usuários",
+        icon=":material/person_add:",
+    )
     settings = st.Page(
         "services/settings.py", 
         title="Configurações", 
@@ -111,15 +116,16 @@ def main_page():
         title="Sair", 
         icon=":material/logout:")
     user_pages = [dashboard, extracao]
-    #admin_pages = [admin]
+    admin_pages = [usuarios]
     account_pages = [settings, logout_page]
     st.logo("images/logo_gabarita.png")
     page_dict = {}
     if st.session_state.role in ["user", "admin"]:
         page_dict["Menu"] = user_pages
+    if st.session_state.role == "admin":
+        page_dict["Admin"] = admin_pages
     if len(page_dict) > 0:
         pg = st.navigation(page_dict | {"Conta": account_pages})
-        
     else:
         pg = st.navigation([st.Page(login_page)])
     pg.run()
