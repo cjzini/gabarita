@@ -20,7 +20,7 @@ with tab1:
     
     # Botão para atualizar a lista
     if st.button("Atualizar Lista", key="btn_atualizar_usuarios"):
-        st.session_state.usuarios_cache = None  # Limpar o cache
+        st.session_state.usuarios_cache = supabase_client.listar_usuarios()  # Limpar o cache
         st.rerun()
     
     # Carregar usuários (com cache)

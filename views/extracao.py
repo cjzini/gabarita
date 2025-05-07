@@ -153,73 +153,79 @@ if st.session_state.get('geracao_realizada', False) and st.session_state.questoe
                         value=st.session_state[f"edit_data_{i}"]['resolucao'],
                         key=f"edit_resolucao_{i}"
                     )              
-                    # Botões de salvar e cancelar
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        submit_button = st.form_submit_button("Salvar alterações")
-                    with col2:
-                        cancel_button = st.form_submit_button("Cancelar")               
-                    if submit_button:
-                        # Atualizar os dados da questão com os valores editados
-                        dados_editados = {
-                            'enunciado': enunciado_editado,
-                            'alternativa1': alternativa1_editada,
-                            'alternativa2': alternativa2_editada,
-                            'alternativa3': alternativa3_editada,
-                            'alternativa4': alternativa4_editada,
-                            'alternativa5': alternativa5_editada,
-                            'gabarito': gabarito_editado,
-                            'resolucao': resolucao_editada
-                        }
-                        # Chamar a função para atualizar a questão
-                        qu.editar_questao(i, dados_editados)
-                        # Sair do modo de edição
-                        st.session_state[f"edit_mode_{i}"] = False
-                        st.rerun()
-                    if cancel_button:
-                        # Sair do modo de edição sem salvar
-                        st.session_state[f"edit_mode_{i}"] = False
-                        st.rerun()           
+                    edt_col1, edt_col2, edt_col3 = st.columns([1, 2, 2])
+                    # Coluna para os botões de ação
+                    with edt_col1:
+                        # Botões de salvar e cancelar
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            submit_button = st.form_submit_button("Salvar alterações")
+                        with col2:
+                            cancel_button = st.form_submit_button("Cancelar")               
+                        if submit_button:
+                            # Atualizar os dados da questão com os valores editados
+                            dados_editados = {
+                                'enunciado': enunciado_editado,
+                                'alternativa1': alternativa1_editada,
+                                'alternativa2': alternativa2_editada,
+                                'alternativa3': alternativa3_editada,
+                                'alternativa4': alternativa4_editada,
+                                'alternativa5': alternativa5_editada,
+                                'gabarito': gabarito_editado,
+                                'resolucao': resolucao_editada
+                            }
+                            # Chamar a função para atualizar a questão
+                            qu.editar_questao(i, dados_editados)
+                            # Sair do modo de edição
+                            st.session_state[f"edit_mode_{i}"] = False
+                            st.rerun()
+                        if cancel_button:
+                            # Sair do modo de edição sem salvar
+                            st.session_state[f"edit_mode_{i}"] = False
+                            st.rerun()           
             else:
-                # Adicionar botões de ação (editar e aprovar/cancelar aprovação)
-                btn_col1, btn_col2, btn_col3 = st.columns([2, 1, 1])
-                # Botão de edição
-                with btn_col1:
-                    if st.button("Editar questão", key=f"btn_editar_{questao_key}"):
-                        # Atualizar os dados de edição com os valores atuais da questão
-                        st.session_state[f"edit_data_{i}"] = {
-                            'enunciado': questao.get('enunciado', ''),
-                            'alternativa1': questao.get('alternativa1', ''),
-                            'alternativa2': questao.get('alternativa2', ''),
-                            'alternativa3': questao.get('alternativa3', ''),
-                            'alternativa4': questao.get('alternativa4', ''),
-                            'alternativa5': questao.get('alternativa5', ''),
-                            'gabarito': questao.get('gabarito', ''),
-                            'resolucao': questao.get('resolucao', '')
-                        }
-                        st.session_state[f"edit_mode_{i}"] = True
-                        st.rerun()
-                # Botão para regenerar a questão
-                with btn_col2:
-                    if st.button("🔄 Regenerar", key=f"btn_regenerar_{questao_key}"):
-                        # Chamar a função para regenerar a questão
-                        if qu.regenerar_questao(i):
-                            st.success(f"Questão {i+1} regenerada com sucesso!")
-                            st.rerun()          
-                # Botão de aprovação
-                with btn_col3:
-                    # Se já estiver aprovada, mostrar botão para cancelar aprovação
-                    if questao.get('aprovado', False):
-                        if st.button("Cancelar aprovação", key=f"btn_cancelar_{questao_key}"):
-                            # Chamar a função de callback
-                            qu.cancelar_aprovacao(i)
-                            st.rerun()  # Recarregar apenas os componentes
-                    else:
-                        # Se não estiver aprovada, mostrar botão de aprovar
-                        if st.button("Aprovar questão", key=f"btn_aprovar_{questao_key}"):
-                            # Chamar a função de callback
-                            qu.aprovar_questao(i)
-                            st.rerun()  # Recarregar apenas os componentes
+                dsg_col1, dsg_col2, dsg_col3, dsg_col4, dsg_col5, dsg_col6 = st.columns([2, 1, 1, 1, 1, 1])
+                # Coluna para os botões de ação
+                with dsg_col1:
+                    # Adicionar botões de ação (editar e aprovar/cancelar aprovação)
+                    btn_col1, btn_col2, btn_col3 = st.columns([1, 1, 1])
+                    # Botão de edição
+                    with btn_col1:
+                        if st.button(" Editar questão ", key=f"btn_editar_{questao_key}"):
+                            # Atualizar os dados de edição com os valores atuais da questão
+                            st.session_state[f"edit_data_{i}"] = {
+                                'enunciado': questao.get('enunciado', ''),
+                                'alternativa1': questao.get('alternativa1', ''),
+                                'alternativa2': questao.get('alternativa2', ''),
+                                'alternativa3': questao.get('alternativa3', ''),
+                                'alternativa4': questao.get('alternativa4', ''),
+                                'alternativa5': questao.get('alternativa5', ''),
+                                'gabarito': questao.get('gabarito', ''),
+                                'resolucao': questao.get('resolucao', '')
+                            }
+                            st.session_state[f"edit_mode_{i}"] = True
+                            st.rerun()
+                    # Botão para regenerar a questão
+                    with btn_col2:
+                        if st.button("🔄 Regenerar", key=f"btn_regenerar_{questao_key}"):
+                            # Chamar a função para regenerar a questão
+                            if qu.regenerar_questao(i):
+                                st.success(f"Questão {i+1} regenerada com sucesso!")
+                                st.rerun()          
+                    # Botão de aprovação
+                    with btn_col3:
+                        # Se já estiver aprovada, mostrar botão para cancelar aprovação
+                        if questao.get('aprovado', False):
+                            if st.button("Cancelar aprovação", key=f"btn_cancelar_{questao_key}"):
+                                # Chamar a função de callback
+                                qu.cancelar_aprovacao(i)
+                                st.rerun()  # Recarregar apenas os componentes
+                        else:
+                            # Se não estiver aprovada, mostrar botão de aprovar
+                            if st.button("Aprovar questão", key=f"btn_aprovar_{questao_key}"):
+                                # Chamar a função de callback
+                                qu.aprovar_questao(i)
+                                st.rerun()  # Recarregar apenas os componentes
             # Adiciona uma linha de separação entre as questões
             st.markdown("---")
 
