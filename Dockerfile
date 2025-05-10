@@ -18,10 +18,14 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Expõe a porta que o Streamlit usa por padrão
 EXPOSE 8501
 
+# Define um argumento para o build
+ARG OPENAI_API_KEY
+
 # Define variáveis de ambiente
 ENV PYTHONUNBUFFERED=1
 ENV STREAMLIT_SERVER_PORT=8501
 ENV STREAMLIT_SERVER_ADDRESS=0.0.0.0
+ENV OPENAI_API_KEY=${OPENAI_API_KEY}
 
 # Comando para executar a aplicação
 CMD ["streamlit", "run", "app.py", "--server.address=0.0.0.0", "--server.port=8501"]

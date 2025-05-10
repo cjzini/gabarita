@@ -1,8 +1,9 @@
 import streamlit as st
+import os
 from openai import OpenAI
 import json
 
-openai_api_key = st.secrets["OPENAI_API_KEY"]
+openai_api_key = st.secrets["OPENAI_API_KEY"] if "OPENAI_API_KEY" in st.secrets else os.getenv("OPENAI_API_KEY")
 client = OpenAI(api_key=openai_api_key)
 
 def gerar_questao(item_json, dificuldade):
